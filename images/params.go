@@ -17,6 +17,7 @@ type ImageParams struct {
 	Quality int
 	Width   int
 	Origin  string
+	Referer string
 }
 
 // ParamsParser maneja el parsing de parámetros de URL
@@ -36,12 +37,12 @@ func (pp *ParamsParser) ParseURLParams(r *http.Request) (*ImageParams, error) {
 		return nil, fmt.Errorf("no path provided")
 	}
 
-	// Regex mejorada para parsear el formato /w_400,q_90/url
-	re := regexp.MustCompile(`^/?(?:w_(\d+))?(?:,q_(\d+))?/?(.+)$`)
+	// Regex mejorada para parsear el formato /w_400,q_90,r_domain.com/url
+	re := regexp.MustCompile(`^/?(?:w_(\d+))?(?:,q_(\d+))?(?:,r_([^/]+))?/?(.+)$`)
 	matches := re.FindStringSubmatch(fullPath)
 	
-	if len(matches) < 4 {
-		return nil, fmt.Errorf("invalid URL format. Expected: /w_400,q_90/url or /w_400/url or /q_90/url")
+	if len(matches) < 5 {
+		return nil, fmt.Errorf("invalid URL format. Expected: /w_400,q_90,r_domain.com/url or /w_400/url or /q_90/url")
 	}
 
 	params := &ImageParams{
@@ -69,8 +70,13 @@ func (pp *ParamsParser) ParseURLParams(r *http.Request) (*ImageParams, error) {
 		}
 	}
 
+	// Parsear referer
+	if matches[3] != "" {
+		params.Referer = matches[3]
+	}
+
 	// Parsear y validar URL
-	imageURL, err := pp.parseImageURL(matches[3])
+	imageURL, err := pp.parseImageURL(matches[4])
 	if err != nil {
 		return nil, err
 	}
@@ -140,5 +146,6 @@ func (pp *ParamsParser) GetDefaultParams() *ImageParams {
 		Quality: 90,
 		URL:     "",
 		Origin:  "",
+		Referer: "",
 	}
 }

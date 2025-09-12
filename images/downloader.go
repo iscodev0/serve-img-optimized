@@ -22,14 +22,14 @@ func NewImageDownloader() *ImageDownloader {
 }
 
 // DownloadImage descarga una imagen desde la URL especificada
-func (id *ImageDownloader) DownloadImage(imageURL, origin string) ([]byte, error) {
+func (id *ImageDownloader) DownloadImage(imageURL, origin, referer string) ([]byte, error) {
 	req, err := http.NewRequest("GET", imageURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
 	// Establecer headers para evitar bloqueos
-	id.setHeaders(req, origin)
+	id.setHeaders(req, origin, referer)
 
 	resp, err := id.client.Do(req)
 	if err != nil {
@@ -59,13 +59,21 @@ func (id *ImageDownloader) DownloadImage(imageURL, origin string) ([]byte, error
 }
 
 // setHeaders configura los headers necesarios para la petición
-func (id *ImageDownloader) setHeaders(req *http.Request, origin string) {
+func (id *ImageDownloader) setHeaders(req *http.Request, origin, referer string) {
 	// User-Agent para evitar bloqueos
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 	
+	// Usar referer si está disponible, sino usar origin
+	refererValue := referer
+	if refererValue == "" {
+		refererValue = origin
+	}
+	
 	// Headers de origen si se especifica
+	if refererValue != "" {
+		req.Header.Set("Referer", "https://"+refererValue)
+	}
 	if origin != "" {
-		req.Header.Set("Referer", origin)
 		req.Header.Set("Origin", origin)
 	}
 	

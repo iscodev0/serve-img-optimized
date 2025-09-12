@@ -42,7 +42,7 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 	}
 
 	// 4. Descargar imagen
-	imageData, err := io.downloader.DownloadImage(params.URL, params.Origin)
+	imageData, err := io.downloader.DownloadImage(params.URL, params.Origin, params.Referer)
 	if err != nil {
 		return nil, "", fmt.Errorf("download error: %v", err)
 	}
@@ -65,7 +65,7 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 // GetImageInfo obtiene información de una imagen sin procesarla
 func (io *ImageOptimizer) GetImageInfo(imageURL string) (map[string]interface{}, error) {
 	// Descargar imagen
-	imageData, err := io.downloader.DownloadImage(imageURL, "")
+	imageData, err := io.downloader.DownloadImage(imageURL, "", "")
 	if err != nil {
 		return nil, fmt.Errorf("download error: %v", err)
 	}

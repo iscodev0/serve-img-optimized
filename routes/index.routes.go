@@ -50,7 +50,7 @@ func NewRoutes() *chi.Mux {
 		r.Use(authMiddleware)
 
 		// Ruta para optimización de imágenes
-		// Formato: /api/image/w_400,q_90/example.com/image.jpg?origin="domain.com"
+		// Formato: /api/image/w_400,q_90,r_domain.com/example.com/image.jpg?origin="domain.com"
 		r.Get("/image/*", OptimizeImageHandler(imageOptimizer))
 
 		// Información de imagen
@@ -69,11 +69,11 @@ func NewRoutes() *chi.Mux {
 
 	// Ruta principal
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Image Optimization Server - Use /w_400,q_90/image-url?origin=domain.com"))
+		w.Write([]byte("Image Optimization Server - Use /w_400,q_90,r_domain.com/image-url?origin=domain.com"))
 	})
 
 	// Ruta para optimización de imágenes (sin autenticación para compatibilidad Testing)
-	// Formato: /w_400,q_90/url?origin="dominio.com"
+	// Formato: /w_400,q_90,r_domain.com/url?origin="dominio.com"
 	// r.HandleFunc("/*", OptimizeImageHandler(imageOptimizer))
 
 	return r
