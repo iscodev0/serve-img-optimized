@@ -74,7 +74,7 @@ func NewRoutes() *chi.Mux {
 
 	// Ruta para optimización de imágenes (sin autenticación para compatibilidad Testing)
 	// Formato: /w_400,q_90,r_domain.com/url?origin="dominio.com"
-	// r.HandleFunc("/*", OptimizeImageHandler(imageOptimizer))
+	r.HandleFunc("/*", OptimizeImageHandler(imageOptimizer))
 
 	return r
 }
