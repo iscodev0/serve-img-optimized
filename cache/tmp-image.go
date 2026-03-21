@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -14,6 +16,7 @@ type CacheManager struct {
 	CacheDir      string
 	CacheDuration time.Duration
 	MaxCacheSize  int64 // en bytes
+	currentSize   atomic.Int64
 }
 
 // NewCacheManager crea una nueva instancia del gestor de cache
@@ -21,11 +24,17 @@ func NewCacheManager(cacheDir string, cacheDuration time.Duration, maxCacheSizeM
 	// Crear directorio de cache si no existe
 	os.MkdirAll(cacheDir, 0755)
 
-	return &CacheManager{
+	cm := &CacheManager{
 		CacheDir:      cacheDir,
 		CacheDuration: cacheDuration,
 		MaxCacheSize:  int64(maxCacheSizeMB) * 1024 * 1024, // convertir MB a bytes
 	}
+
+	// Precalcular el tamaño del folder 1 sola vez
+	size, _ := cm.calculateFolderSize()
+	cm.currentSize.Store(size)
+
+	return cm
 }
 
 // GenerateCacheKey genera una clave única para el cache basada en los parámetros
@@ -48,7 +57,9 @@ func (cm *CacheManager) GetCachedImage(cacheKey string) ([]byte, bool) {
 	// Verificar si el archivo no ha expirado
 	if time.Since(fileInfo.ModTime()) > cm.CacheDuration {
 		// Archivo expirado, eliminarlo
-		os.Remove(cachePath)
+		if err := os.Remove(cachePath); err == nil {
+			cm.currentSize.Add(-fileInfo.Size())
+		}
 		return nil, false
 	}
 
@@ -69,7 +80,11 @@ func (cm *CacheManager) SaveToCache(cacheKey string, data []byte) error {
 	}
 
 	cachePath := filepath.Join(cm.CacheDir, cacheKey)
-	return os.WriteFile(cachePath, data, 0644)
+	err := os.WriteFile(cachePath, data, 0644)
+	if err == nil {
+		cm.currentSize.Add(int64(len(data)))
+	}
+	return err
 }
 
 // cleanupIfNeeded limpia archivos antiguos si es necesario para hacer espacio
@@ -100,14 +115,20 @@ func (cm *CacheManager) cleanupIfNeeded(newFileSize int64) error {
 
 		if err := os.Remove(filePath); err == nil {
 			currentSize -= fileSize
+			cm.currentSize.Add(-fileSize)
 		}
 	}
 
 	return nil
 }
 
-// getCacheSize calcula el tamaño total del cache
+// getCacheSize calcula el tamaño total del cache rápidamente (O(1))
 func (cm *CacheManager) getCacheSize() (int64, error) {
+	return cm.currentSize.Load(), nil
+}
+
+// calculateFolderSize recorre el disco para calcular tamaño base
+func (cm *CacheManager) calculateFolderSize() (int64, error) {
 	var totalSize int64
 
 	err := filepath.Walk(cm.CacheDir, func(path string, info os.FileInfo, err error) error {
@@ -141,13 +162,9 @@ func (cm *CacheManager) getCacheFilesSorted() ([]os.FileInfo, error) {
 	}
 
 	// Ordenar por fecha de modificación (más antiguos primero)
-	for i := 0; i < len(fileInfos)-1; i++ {
-		for j := i + 1; j < len(fileInfos); j++ {
-			if fileInfos[i].ModTime().After(fileInfos[j].ModTime()) {
-				fileInfos[i], fileInfos[j] = fileInfos[j], fileInfos[i]
-			}
-		}
-	}
+	sort.Slice(fileInfos, func(i, j int) bool {
+		return fileInfos[i].ModTime().Before(fileInfos[j].ModTime())
+	})
 
 	return fileInfos, nil
 }
@@ -181,7 +198,9 @@ func (cm *CacheManager) CleanupOldFiles() error {
 	for _, file := range files {
 		if time.Since(file.ModTime()) > cm.CacheDuration {
 			filePath := filepath.Join(cm.CacheDir, file.Name())
-			os.Remove(filePath)
+			if err := os.Remove(filePath); err == nil {
+				cm.currentSize.Add(-file.Size())
+			}
 		}
 	}
 	return nil

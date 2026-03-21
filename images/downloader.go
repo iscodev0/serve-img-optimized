@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -14,15 +15,69 @@ type ImageDownloader struct {
 
 // NewImageDownloader crea una nueva instancia del descargador
 func NewImageDownloader() *ImageDownloader {
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+	}
 	return &ImageDownloader{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
 }
 
-// DownloadImage descarga una imagen desde la URL especificada
+const imageProxyBaseURL = "https://image-proxy.mangasx.online/img"
+
+func getProxiedImageUrl(imageURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+
+	u, err := url.Parse(imageURL)
+	if err != nil {
+		return imageURL
+	}
+
+	if u.Host == "image-proxy.mangasx.online" {
+		return imageURL
+	}
+
+	proxyURL, err := url.Parse(imageProxyBaseURL)
+	if err != nil {
+		return imageURL
+	}
+
+	q := proxyURL.Query()
+	q.Set("url", imageURL)
+	originalOrigin := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	q.Set("origin", originalOrigin)
+	proxyURL.RawQuery = q.Encode()
+
+	return proxyURL.String()
+}
+
+// DownloadImage descarga una imagen intentando primero la original, y si falla, usando el proxy
 func (id *ImageDownloader) DownloadImage(imageURL, origin, referer string) ([]byte, error) {
+	data, err := id.download(imageURL, origin, referer)
+	if err != nil {
+		// Intentar descargar con la URL usando nuestro proxy
+		proxiedURL := getProxiedImageUrl(imageURL)
+		if proxiedURL != imageURL {
+			proxyData, proxyErr := id.download(proxiedURL, origin, referer)
+			if proxyErr == nil {
+				return proxyData, nil
+			}
+			return nil, fmt.Errorf("fallo original: %v \n fallo proxy: %v", err, proxyErr)
+		}
+		return nil, err
+	}
+	return data, nil
+}
+
+// download realiza la descarga real modificando los headers y leyendo la respuesta
+func (id *ImageDownloader) download(imageURL, origin, referer string) ([]byte, error) {
 	req, err := http.NewRequest("GET", imageURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)

@@ -13,6 +13,14 @@ import (
 	"golang.org/x/image/webp"
 )
 
+func init() {
+	// Registrar formatos de imagen soportados globalmente, solo una vez
+	image.RegisterFormat("jpeg", "\xff\xd8", jpeg.Decode, jpeg.DecodeConfig)
+	image.RegisterFormat("png", "\x89PNG\r\n\x1a\n", png.Decode, png.DecodeConfig)
+	image.RegisterFormat("gif", "GIF8", gif.Decode, gif.DecodeConfig)
+	image.RegisterFormat("webp", "RIFF????WEBP", webp.Decode, webp.DecodeConfig)
+}
+
 // ImageProcessor maneja el procesamiento de imágenes
 type ImageProcessor struct{}
 
@@ -23,12 +31,6 @@ func NewImageProcessor() *ImageProcessor {
 
 // ProcessImage redimensiona y optimiza una imagen
 func (ip *ImageProcessor) ProcessImage(imageData []byte, width, quality int) ([]byte, error) {
-	// Registrar formatos de imagen soportados
-	image.RegisterFormat("jpeg", "\xff\xd8", jpeg.Decode, jpeg.DecodeConfig)
-	image.RegisterFormat("png", "\x89PNG\r\n\x1a\n", png.Decode, png.DecodeConfig)
-	image.RegisterFormat("gif", "GIF8", gif.Decode, gif.DecodeConfig)
-	image.RegisterFormat("webp", "RIFF????WEBP", webp.Decode, webp.DecodeConfig)
-
 	// Decodificar imagen
 	img, format, err := image.Decode(bytes.NewReader(imageData))
 	if err != nil {
@@ -58,12 +60,6 @@ func (ip *ImageProcessor) ValidateImageURL(contentType string) error {
 
 // GetImageInfo obtiene información básica de una imagen
 func (ip *ImageProcessor) GetImageInfo(imageData []byte) (map[string]interface{}, error) {
-	// Registrar formatos
-	image.RegisterFormat("jpeg", "\xff\xd8", jpeg.Decode, jpeg.DecodeConfig)
-	image.RegisterFormat("png", "\x89PNG\r\n\x1a\n", png.Decode, png.DecodeConfig)
-	image.RegisterFormat("gif", "GIF8", gif.Decode, gif.DecodeConfig)
-	image.RegisterFormat("webp", "RIFF????WEBP", webp.Decode, webp.DecodeConfig)
-
 	config, format, err := image.DecodeConfig(bytes.NewReader(imageData))
 	if err != nil {
 		return nil, err

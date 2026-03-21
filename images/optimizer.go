@@ -7,6 +7,12 @@ import (
 	"github.com/loxzer01/serve-img-optimized/cache"
 )
 
+// maxConcurrentOptimizations define el límite de trabajadores
+const maxConcurrentOptimizations = 50
+
+// activeWorkers es el semáforo global para prevenir caídas por falta de RAM
+var activeWorkers = make(chan struct{}, maxConcurrentOptimizations)
+
 // ImageOptimizer coordina todo el proceso de optimización de imágenes
 type ImageOptimizer struct {
 	cacheManager *cache.CacheManager
@@ -41,6 +47,10 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 		return cachedData, "image/jpeg", nil
 	}
 
+	// Control de concurrencia: bloquear si alcanzamos el límite de peticiones simultáneas, solo en el proceso pesado
+	activeWorkers <- struct{}{}
+	defer func() { <-activeWorkers }()
+
 	// 4. Descargar imagen
 	imageData, err := io.downloader.DownloadImage(params.URL, params.Origin, params.Referer)
 	if err != nil {
@@ -64,6 +74,10 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 
 // GetImageInfo obtiene información de una imagen sin procesarla
 func (io *ImageOptimizer) GetImageInfo(imageURL string) (map[string]interface{}, error) {
+	// Control de concurrencia
+	activeWorkers <- struct{}{}
+	defer func() { <-activeWorkers }()
+
 	// Descargar imagen
 	imageData, err := io.downloader.DownloadImage(imageURL, "", "")
 	if err != nil {
