@@ -72,9 +72,9 @@ func NewRoutes() *chi.Mux {
 		w.Write([]byte("Image Optimization Server - Use /w_400,q_90,r_domain.com/image-url?origin=domain.com"))
 	})
 
-	// Ruta para optimización de imágenes (sin autenticación para compatibilidad Testing)
-	// Formato: /w_400,q_90,r_domain.com/url?origin="dominio.com"
-	r.HandleFunc("/*", OptimizeImageHandler(imageOptimizer))
+	// Ruta pública para optimización de imágenes (protegida con JWT por URL)
+	// Formato: /w_400,q_90,r_domain.com/url?origin="dominio.com"&token=JWT
+	r.HandleFunc("/*", jwtImageAuthMiddleware(OptimizeImageHandler(imageOptimizer)))
 
 	return r
 }
