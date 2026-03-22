@@ -11,6 +11,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"golang.org/x/image/webp"
+	"github.com/HugoSmits86/nativewebp"
 )
 
 func init() {
@@ -40,11 +41,10 @@ func (ip *ImageProcessor) ProcessImage(imageData []byte, width, quality int) ([]
 	// Redimensionar imagen manteniendo aspect ratio
 	resizedImg := imaging.Resize(img, width, 0, imaging.Lanczos)
 
-	// Codificar como JPEG con calidad especificada
+	// Codificar como WebP Puro (Lossless VP8L)
 	var buf bytes.Buffer
-	options := &jpeg.Options{Quality: quality}
-	if err := jpeg.Encode(&buf, resizedImg, options); err != nil {
-		return nil, fmt.Errorf("failed to encode image: %v", err)
+	if err := nativewebp.Encode(&buf, resizedImg); err != nil {
+		return nil, fmt.Errorf("failed to encode webp: %v", err)
 	}
 
 	return buf.Bytes(), nil

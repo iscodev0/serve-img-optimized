@@ -44,7 +44,7 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 
 	// 3. Verificar caché
 	if cachedData, found := io.cacheManager.GetCachedImage(cacheKey); found {
-		return cachedData, "image/jpeg", nil
+		return cachedData, "image/webp", nil
 	}
 
 	// Control de concurrencia: bloquear si alcanzamos el límite de peticiones simultáneas, solo en el proceso pesado
@@ -69,7 +69,7 @@ func (io *ImageOptimizer) OptimizeImage(r *http.Request) ([]byte, string, error)
 		fmt.Printf("Warning: Failed to save to cache: %v\n", err)
 	}
 
-	return processedData, "image/jpeg", nil
+	return processedData, "image/webp", nil
 }
 
 // GetImageInfo obtiene información de una imagen sin procesarla
