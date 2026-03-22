@@ -10,4 +10,7 @@ require (
 
 require golang.org/x/image v0.29.0
 
-require github.com/go-chi/cors v1.2.2
+require (
+	github.com/HugoSmits86/nativewebp v1.2.1
+	github.com/go-chi/cors v1.2.2
+)
