@@ -43,7 +43,7 @@ func (ip *ImageProcessor) ProcessImage(imageData []byte, width, quality int) ([]
 
 	// Codificar como WebP Puro (Lossless VP8L)
 	var buf bytes.Buffer
-	if err := nativewebp.Encode(&buf, resizedImg); err != nil {
+	if err := nativewebp.Encode(&buf, resizedImg, nil); err != nil {
 		return nil, fmt.Errorf("failed to encode webp: %v", err)
 	}
 
